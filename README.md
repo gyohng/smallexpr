@@ -79,6 +79,42 @@ double callHandler(const char *name, int nameLen, double *argv, int argc) {
 ## Example Use
 Here's an example use:
 
+### Example 1:
+```C
+#include <stdio.h>
+#include "smallexpr.h"
+
+int main() {
+    printf("Result: %lf\n", evaluateExpr("2**10 - 24", NULL, NULL));
+    return 0;
+}
+```
+
+### Example 2:
+```C
+#include <stdio.h>
+#include "smallexpr.h"
+
+char buf[256];
+int main() {
+    printf("Enter an expression to evaluate:\n");
+    if (!fgets(buf, sizeof(buf), stdin))
+        return 0;
+    
+    const char *err = NULL;
+    double result = evaluateExpr(buf, NULL, &err);
+    
+    if (err)
+        printf("Error: %s\n", err);
+    else
+        printf("Result: %lf\n", result);
+    
+    return 0;
+}
+```
+
+### Example 3:
+
 ```C
 #include <stdio.h>
 #include <string.h>
