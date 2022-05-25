@@ -2,19 +2,20 @@
 // Copyright 2022, George Yohng
 
 #include <assert.h>
-#include <math.h>
 #include <ctype.h>
 #include <string.h>
 
-#include "smallexpr.h"
+#include "smallexpr-int.h"
 
-double evaluateExpr(
+#define EXPR_ERRORVAL EXPRINT_ERRORVAL
+
+int evaluateExprInt(
     const char *expr,
-    double (*call)(const char *name, int nameLen, double *argv, int argc),
+    int (*call)(const char *name, int nameLen, int *argv, int argc),
     const char **error) {
 
     int opStack[64] = {0}, opStackPtr = 0, valueStackPtr = 0;
-    double valueStack[64];
+    int valueStack[64];
 
     enum {
         // state machine constants
@@ -27,7 +28,7 @@ double evaluateExpr(
     };
 
     int state = START;
-    double lastValue = 0.0;
+    int lastValue = 0.0;
     const char *lastIdent = expr;
     int lastIdentLen = 0;
 
@@ -49,7 +50,7 @@ double evaluateExpr(
                 if (!call) {
                 callError:
                     if (error) *error = "calling a null function";
-                    return nan("");
+                    return EXPR_ERRORVAL;
                 }
                 lastValue = skipCounter ? 0.0 : call(lastIdent, lastIdentLen, NULL, 0);
                 state = NUM;
@@ -79,32 +80,44 @@ double evaluateExpr(
                 if (opPrio < foldPrio)
                     break;
 
-                double a = (op & BINOP) ? valueStack[valueStackPtr--] : lastValue;
-                double b = lastValue;
+                int a = (op & BINOP) ? valueStack[valueStackPtr--] : lastValue;
+                int b = lastValue;
 
                 if (!skipCounter) { // full evaluation
                     switch (opChar) {
                         case '0': lastValue = 0.0; break; // dummy operation
                         case 'u': lastValue = -a; break;
-                        case '~': lastValue = (double) (~(long long) a); break;
+                        case '~': lastValue = ~a; break;
                         case '!': lastValue = !a; break;
                         case '+': lastValue = a + b; break;
                         case '-': lastValue = a - b; break;
                         case '*': lastValue = a * b; break;
                         case '/': lastValue = a / b; break;
-                        case '%': lastValue = fmod(a, b); break;
-                        case 'P': lastValue = pow(a, b); break;
+                        case '%': lastValue = a % b; break;
+                        case 'P': {
+                            if (b < 0) {
+                                if (error) *error = "negative powers not supported";
+                                return EXPR_ERRORVAL;
+                            }
+
+                            int res = 1;
+                            for (int p = 0; p < b; p++)
+                                res *= p;
+
+                            lastValue = res;
+                            break;
+                        } 
                         case '<': lastValue = a < b; break;
                         case '>': lastValue = a > b; break;
                         case 'E': lastValue = a == b; break;
                         case 'N': lastValue = a != b; break;
                         case 'L': lastValue = a <= b; break;
                         case 'G': lastValue = a >= b; break;
-                        case '|': lastValue = ((long long) a) | ((long long) b); break; // NOLINT(cppcoreguidelines-narrowing-conversions)
-                        case '&': lastValue = ((long long) a) & ((long long) b); break; // NOLINT(cppcoreguidelines-narrowing-conversions)
-                        case '^': lastValue = ((long long) a) ^ ((long long) b); break; // NOLINT(cppcoreguidelines-narrowing-conversions)
-                        case 'l': lastValue = ((long long) a) << ((long long) b); break; // NOLINT(cppcoreguidelines-narrowing-conversions)
-                        case 'r': lastValue = ((long long) a) >> ((long long) b); break; // NOLINT(cppcoreguidelines-narrowing-conversions)
+                        case '|': lastValue = a | b; break; // NOLINT(cppcoreguidelines-narrowing-conversions)
+                        case '&': lastValue = a & b; break; // NOLINT(cppcoreguidelines-narrowing-conversions)
+                        case '^': lastValue = a ^ b; break; // NOLINT(cppcoreguidelines-narrowing-conversions)
+                        case 'l': lastValue = a << b; break; // NOLINT(cppcoreguidelines-narrowing-conversions)
+                        case 'r': lastValue = a >> b; break; // NOLINT(cppcoreguidelines-narrowing-conversions)
                         case '=': {
                             int size = opStack[opStackPtr--];
                             int offs = opStack[opStackPtr--];
@@ -124,7 +137,7 @@ double evaluateExpr(
                             break;
                         default:
                             if (error) *error = "unrecognized operator";
-                            return nan("");
+                            return EXPR_ERRORVAL;
                     }
                 } else { // short-circuited evaluation
                     switch (opChar) {
@@ -167,7 +180,7 @@ double evaluateExpr(
 
             if (opStackPtr > 1) {
                 if (error) *error = "incomplete expression";
-                return nan("");
+                return EXPR_ERRORVAL;
             }
 
             assert(opStackPtr == 1 && opStack[opStackPtr] == START);
@@ -218,38 +231,11 @@ double evaluateExpr(
                 int start = i;
                 lastValue = inCh - '0';
                 inCh = expr[++i];
-                double expm = 1.0;
-                double expd = 1.0;
                 while (isdigit(inCh)) {
                     lastValue = lastValue * 10 + (inCh - '0');
                     inCh = expr[++i];
                 }
 
-                if (inCh == '.') {
-                    inCh = expr[++i];
-                    while (isdigit(inCh)) {
-                        lastValue = lastValue * 10 + (inCh - '0');
-                        expd *= 10.0;
-                        inCh = expr[++i];
-                    }
-                }
-
-                if (inCh == 'e' || inCh == 'E') {
-                    inCh = expr[++i];
-                    int iexp = 0, expSign = 0;
-                    if (inCh == '-') expSign = 1;
-                    if (inCh == '-' || inCh == '+') inCh = expr[++i];
-                    while (isdigit(inCh)) {
-                        iexp = iexp * 10 + (inCh - '0');
-                        inCh = expr[++i];
-                    }
-                    if (expSign) expd *= pow(10.0, iexp); else expm *= pow(10.0, iexp);
-                }
-
-                if (inCh=='f' || inCh=='F') inCh = expr[++i]; // skip float suffix, if necessary
-
-                if (expm > 1.0) lastValue *= expm;
-                if (expd > 1.0) lastValue /= expd;
                 opStack[++opStackPtr] = state;
                 state = NUM;
                 continue;
@@ -308,7 +294,7 @@ double evaluateExpr(
 
                 if (opStack[opStackPtr] != CALL) {
                     if (error) *error = "unknown state found at comma";
-                    return nan("");
+                    return EXPR_ERRORVAL;
                 }
 
                 opStackPtr--;
@@ -349,7 +335,7 @@ double evaluateExpr(
                     valueStackPtr -= argCount;
                 } else {
                     if (error) *error = "unexpected parenthesis";
-                    return nan("");
+                    return EXPR_ERRORVAL;
                 }
 
                 inCh = expr[++i];
@@ -439,28 +425,22 @@ double evaluateExpr(
         }
 
         if (error) *error = "syntax error";
-        return nan("");
+        return EXPR_ERRORVAL;
     }
 }
+
+#undef EXPR_ERRORVAL
 
 
 #ifdef TEST_SMALLEXPR
 #include <stdio.h>
 // Also compile with -DDEBUG to enable assertions
 
-double calcExprDefaultCall(const char *name, int nameLen, double *argv, int argc) {
-    if (nameLen == 3 && name[0] == 'p' && name[1] == 'o' && name[2] == 'w' && argc == 2) {
-        return pow(argv[0], argv[1]);
-    }
-    printf("Unknown function!\n");
-    return 0.0;
-}
-
 int main() {
 #define TESTEVAL(expr) { \
-    double gt = (double)(expr); \
-    double res = evaluateExpr(#expr,calcExprDefaultCall,NULL); \
-    if ( !(fabs(gt-res) <= 1e-7)) { printf("Test failed: %s GT %lf RES %lf\n", #expr, gt, res); } \
+    int gt = (int)(expr); \
+    int res = evaluateExprInt(#expr,NULL,NULL); \
+    if (gt != res) { printf("Test failed: %s GT %d RES %d\n", #expr, gt, res); } \
 }
 
     TESTEVAL(16 * 17 + 18)
@@ -468,15 +448,13 @@ int main() {
     TESTEVAL(5 + 5)
     TESTEVAL(17 * 17 - 18)
     TESTEVAL(17 * 17 * 18)
-    TESTEVAL(17.0 * 17 / 18)
+    TESTEVAL(17 * 17 / 18)
     TESTEVAL(17 ^ 18)
     TESTEVAL(17 % 18)
     TESTEVAL(17 == 18)
     TESTEVAL(17 != 18)
     TESTEVAL(0x07012ABD)
     TESTEVAL(0x07012ABD == 117516989)
-    TESTEVAL(123.456e3 == 123456)
-    TESTEVAL(123.456e3)
     TESTEVAL(17 < 18)
     TESTEVAL(17 <= 18)
     TESTEVAL(17 > 18)
@@ -497,10 +475,6 @@ int main() {
     TESTEVAL((100 / 2 / 2) == 25)
     TESTEVAL((100 / 2 * 2) == 100)
     TESTEVAL((100 / 2 / 2 * 2) == 50)
-    TESTEVAL((100.0 / 2 / 2 / 2) == 12.5)
-    TESTEVAL((100.0 / 2 / 2 / 2 / 2) == 6.25)
-    TESTEVAL(pow(5, 2) == 25)
-    TESTEVAL(pow(pow(5, 2), 2) == 625)
     TESTEVAL(1 && 0 && 1)
     TESTEVAL(1 || 1 && 0)
 
