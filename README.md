@@ -36,6 +36,15 @@ int evaluateInt(
     const char **error);
 ```
 
+### Return value:
+
+The function returns the result of the expression evaluation. If an error occurs, the function will return NaN for the double version and EXPRINT_ERRORVAL (-2147483648) for the integer version. You can differentiate the error values from the result of the calculation by passing and checking `error` against NULL (success).
+
+### Parameters:
+ - `expr` - an expression to evaluate
+ - `call` - a handler function to call when identifiers or function calls are found in the expression, passing NULL is acceptable.
+ - `error` - returned error text, NULL is written to `*error` on success; if no error handling is necessary, pass NULL.
+
 ## Example Use
 Here's an example use:
 
