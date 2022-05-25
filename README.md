@@ -55,11 +55,11 @@ int (*call)(const char *name, int nameLen, int *argv, int argc)
 double (*call)(const char *name, int nameLen, double *argv, int argc)
 ```
 
-The function takes the identifier name and its length. The name is not null-terminated, because it points directly to a part of the expression string passed to the evaluate function.
+The function takes the identifier name and its length. The name is not null-terminated because it points directly to a part of the expression string passed to the evaluate function.
 
 The actual call parameters are passed via `argv` and argc.
 
-Variable getters (indentifiers referenced without parentheses) are handled as function calls with zero arguments.
+Variable getters (identifiers referenced without parentheses) are handled as function calls with zero arguments.
 
 Variable setters (e.g. `"varName = 5;"` passed as an expression) are handled through a special case, where `argc` is set to -1, and `argv` contains a single element.
 
