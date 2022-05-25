@@ -66,7 +66,7 @@ double evaluateExpr(
             int prioHashIdx = (foldOpChar * 1554 >> 9) & 31;
             int foldPrio = opCharacters[prioHashIdx] == foldOpChar ? opPriorities[prioHashIdx] : 0;
 
-            for (;; opStackPtr--) {
+            for (;;) {
                 int op = opStack[opStackPtr];
                 if (!(op & OP)) break;
 
@@ -81,6 +81,7 @@ double evaluateExpr(
 
                 double a = (op & BINOP) ? valueStack[valueStackPtr--] : lastValue;
                 double b = lastValue;
+                opStackPtr--;
 
                 if (!skipCounter) { // full evaluation
                     switch (opChar) {

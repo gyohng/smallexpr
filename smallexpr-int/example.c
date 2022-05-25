@@ -1,39 +1,3 @@
-# smallexpr
-
-This is a self-contained expression evaluator. Two versions are provided:
- - a double version
- - an integer-only version
- 
-Both versions of the evaluator are lean, do not use dynamic memory and do not rely on external number conversion routines, thus are suitable for embedded use.
-
-The evaluator is capable of evaluating the following expression types:
- - addition/subtraction
- - multiplication/division/modulo
- - true/false logical comparisons (with short-circuited evaluation)
- - bitwise logical operators and shifts
- - parentheses
-
-When handed a call handler function, it can be made to support additionally: 
- - variables
- - function calls
-
-The function API is:
-
-```C
-double evaluateExpr(
-    const char *expr,
-    double (*call)(const char *name, int nameLen, double *argv, int argc),
-    const char **error);
-
-int evaluateInt(
-    const char *expr,
-    int (*call)(const char *name, int nameLen, int *argv, int argc),
-    const char **error);
-```
-
-Here's an example use:
-
-```C
 #include <stdio.h>
 #include <string.h>
 #include "smallexpr-int.h"
@@ -87,12 +51,3 @@ int main() {
 
     return 0;
 }
-```
-
-Output:
-```
-10 17 
-888 
--1000 
-Result: 27
-```

@@ -28,7 +28,7 @@ int evaluateExprInt(
     };
 
     int state = START;
-    int lastValue = 0.0;
+    int lastValue = 0;
     const char *lastIdent = expr;
     int lastIdentLen = 0;
 
@@ -52,7 +52,7 @@ int evaluateExprInt(
                     if (error) *error = "calling a null function";
                     return EXPR_ERRORVAL;
                 }
-                lastValue = skipCounter ? 0.0 : call(lastIdent, lastIdentLen, NULL, 0);
+                lastValue = skipCounter ? 0 : call(lastIdent, lastIdentLen, NULL, 0);
                 state = NUM;
             }
 
@@ -67,7 +67,7 @@ int evaluateExprInt(
             int prioHashIdx = (foldOpChar * 1554 >> 9) & 31;
             int foldPrio = opCharacters[prioHashIdx] == foldOpChar ? opPriorities[prioHashIdx] : 0;
 
-            for (;; opStackPtr--) {
+            for (;;) {
                 int op = opStack[opStackPtr];
                 if (!(op & OP)) break;
 
@@ -82,10 +82,11 @@ int evaluateExprInt(
 
                 int a = (op & BINOP) ? valueStack[valueStackPtr--] : lastValue;
                 int b = lastValue;
+                opStackPtr--;
 
                 if (!skipCounter) { // full evaluation
                     switch (opChar) {
-                        case '0': lastValue = 0.0; break; // dummy operation
+                        case '0': lastValue = 0; break; // dummy operation
                         case 'u': lastValue = -a; break;
                         case '~': lastValue = ~a; break;
                         case '!': lastValue = !a; break;
@@ -142,12 +143,12 @@ int evaluateExprInt(
                 } else { // short-circuited evaluation
                     switch (opChar) {
                         default:
-                            lastValue = 0.0;
+                            lastValue = 0;
                             break;
                         case '=': {
                             opStackPtr--;
                             opStackPtr--;
-                            lastValue = 0.0;
+                            lastValue = 0;
                             break;
                         }
                         case 'O':
@@ -329,7 +330,7 @@ int evaluateExprInt(
 
                     if (!call) goto callError;
                     lastValue = skipCounter ?
-                                0.0 :
+                                0 :
                                 call(&expr[offs], size, &valueStack[valueStackPtr] + 1 - argCount, argCount);
                     state = NUM;
                     valueStackPtr -= argCount;
@@ -418,7 +419,7 @@ int evaluateExprInt(
             scanningArgs = opStack[opStackPtr--];
             assert(argCount == 0);
             if (!call) goto callError;
-            lastValue = skipCounter ? 0.0 : call(&expr[offs], size, NULL, 0);
+            lastValue = skipCounter ? 0 : call(&expr[offs], size, NULL, 0);
             state = NUM;
             inCh = expr[++i];
             continue;
