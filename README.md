@@ -45,6 +45,37 @@ The function returns the result of the expression evaluation. If an error occurs
  - `call` - a handler function to call when identifiers or function calls are found in the expression, passing NULL is acceptable.
  - `error` - returned error text, NULL is written to `*error` on success; if no error handling is necessary, pass NULL.
 
+### Call Handler Function
+
+```C
+// for evaluateExprInt
+int (*call)(const char *name, int nameLen, int *argv, int argc)
+
+// for evaluateExpr
+double (*call)(const char *name, int nameLen, double *argv, int argc)
+```
+
+The function takes the identifier name and its length. The name is not null-terminated, because it points directly to a part of the expression string passed to the evaluate function.
+
+The actual call parameters are passed via `argv` and argc.
+
+Variable getters (indentifiers referenced without parentheses) are handled as function calls with zero arguments.
+
+Variable setters (e.g. `"varName = 5;"` passed as an expression) are handled through a special case, where `argc` is set to -1, and `argv` contains a single element.
+
+If you use modern C++ and have `string_view`, then a comfortable way of checking the identifier name could be done in the following way:
+
+```C
+double callHandler(const char *name, int nameLen, double *argv, int argc) {
+    std::string_view ident(name, nameLen);
+    if (ident == "pow" && argc == 2) return pow(argv[0], argv[1]);
+    if (ident == "sin" && argc == 1) return sin(argv[0]);
+    ...
+    ...
+    ...
+}
+```
+
 ## Example Use
 Here's an example use:
 
