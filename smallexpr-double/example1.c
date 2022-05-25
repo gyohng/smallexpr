@@ -8,12 +8,12 @@ int main() {
         return 0;
     
     const char *err = NULL;
-    int result = evaluateExpr(buf, NULL, &err);
+    double result = evaluateExpr(buf, NULL, &err);
     
     if (err)
         printf("Error: %s\n", err);
     else
-        printf("Result: %d\n", result);
+        printf("Result: %lf\n", result);
     
     return 0;
 }
