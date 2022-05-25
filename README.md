@@ -1,5 +1,7 @@
 # smallexpr
 
+## Introduction
+
 This is a self-contained expression evaluator. Two versions are provided:
  - a double version
  - an integer-only version
@@ -17,6 +19,9 @@ When handed a call handler function, it can be made to support additionally:
  - variables
  - function calls
 
+
+## API
+
 The function API is:
 
 ```C
@@ -31,6 +36,7 @@ int evaluateInt(
     const char **error);
 ```
 
+## Example Use
 Here's an example use:
 
 ```C
@@ -96,3 +102,7 @@ Output:
 -1000 
 Result: 27
 ```
+
+## Notes
+
+The function currently does not check for internal stack overflow, the size of which is currently hardcoded.
